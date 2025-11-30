@@ -1,0 +1,9 @@
+streamlit
+pandas
+sqlite3
+datetime
+date
+timedelta
+plotly
+plotly
+calendar
