@@ -11,7 +11,7 @@ st.set_page_config(
     page_title="Finance Pro",
     page_icon="💎",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"  # Sidebar toujours visible
 )
 
 # ==================== DARK THEME COLORS ====================
@@ -356,6 +356,59 @@ def load_mobile_dark_css():
             border-right: 1px solid rgba(255,255,255,0.05);
         }}
         
+        /* Forcer la visibilité de la sidebar */
+        [data-testid="stSidebar"][aria-expanded="true"] {{
+            display: block !important;
+        }}
+        
+        /* Bouton hamburger stylé */
+        button[kind="header"] {{
+            background: {COLORS['bg_card']} !important;
+            border-radius: 12px !important;
+            padding: 0.75rem !important;
+            border: 2px solid {COLORS['accent_orange']} !important;
+            color: {COLORS['text_primary']} !important;
+        }}
+        
+        button[kind="header"]:hover {{
+            background: {COLORS['bg_card_hover']} !important;
+            border-color: {COLORS['accent_pink']} !important;
+        }}
+        
+        /* Mobile responsive */
+        @media (max-width: 768px) {{
+            /* Bouton menu visible en haut à gauche */
+            button[kind="header"] {{
+                position: fixed !important;
+                top: 1rem !important;
+                left: 1rem !important;
+                z-index: 1001 !important;
+                box-shadow: 0 4px 12px rgba(255, 153, 102, 0.3) !important;
+            }}
+            
+            /* Sidebar pleine hauteur sur mobile */
+            [data-testid="stSidebar"] {{
+                position: fixed;
+                left: 0;
+                top: 0;
+                height: 100vh;
+                z-index: 1000;
+                width: 280px !important;
+            }}
+            
+            /* Overlay derrière la sidebar */
+            [data-testid="stSidebar"]::before {{
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: -1;
+            }}
+        }}
+        
         /* ==================== HIDE BRANDING ==================== */
         #MainMenu {{visibility: hidden;}}
         footer {{visibility: hidden;}}
@@ -669,13 +722,19 @@ def calculer_soldes(mois, annee):
 
 # ==================== COMPOSANTS UI ====================
 def render_mobile_header():
-    st.markdown("""
+    st.markdown(f"""
         <div class="mobile-header">
-            <div class="header-icon">💎</div>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div class="header-icon">💎</div>
+                <div style="font-size: 1.2rem; font-weight: 700; color: {COLORS['accent_orange']};">Finance Pro</div>
+            </div>
             <div style="display: flex; gap: 1rem;">
                 <div class="header-icon">🔔</div>
                 <div class="header-icon">👁️</div>
             </div>
+        </div>
+        <div style="text-align: center; padding: 0.5rem; color: {COLORS['text_secondary']}; font-size: 0.85rem;">
+            👈 Ouvrez le menu pour naviguer
         </div>
     """, unsafe_allow_html=True)
 
