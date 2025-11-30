@@ -1,9 +1,10 @@
 streamlit
 pandas
-sqlite3
 datetime
 date
 timedelta
 plotly
+numpy
 plotly
+openpyxl
 calendar
