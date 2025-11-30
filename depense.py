@@ -5,6 +5,7 @@ from datetime import datetime, date, timedelta
 import plotly.express as px
 import plotly.graph_objects as go
 import calendar
+import hashlib
 
 # ==================== CONFIGURATION ====================
 st.set_page_config(
@@ -32,7 +33,7 @@ COLORS = {
     'warning': '#ffaa00',
 }
 
-# ==================== CSS MOBILE AVEC NAV HORIZONTALE ====================
+# ==================== CSS MOBILE ====================
 def load_mobile_dark_css():
     st.markdown(f"""
     <style>
@@ -52,84 +53,42 @@ def load_mobile_dark_css():
         
         /* ==================== MOBILE HEADER ==================== */
         .mobile-header {{
-            padding: 1rem 1.5rem;
+            padding: 1.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
             background: {COLORS['bg_dark']};
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 1rem;
         }}
         
         .header-left {{
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 1rem;
         }}
         
         .header-icon {{
-            width: 40px;
-            height: 40px;
-            background: {COLORS['bg_card']};
-            border-radius: 12px;
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, {COLORS['accent_orange']}, {COLORS['accent_pink']});
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
+            font-size: 1.5rem;
         }}
         
         .app-title {{
-            font-size: 1.3rem;
+            font-size: 1.5rem;
             font-weight: 900;
-            background: linear-gradient(135deg, {COLORS['accent_orange']}, {COLORS['accent_pink']});
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }}
-        
-        /* ==================== NAVIGATION HORIZONTALE ==================== */
-        .horizontal-nav {{
-            display: flex;
-            gap: 0.5rem;
-            padding: 1rem 1.5rem;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-            position: sticky;
-            top: 72px;
-            background: {COLORS['bg_dark']};
-            z-index: 99;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }}
-        
-        .horizontal-nav::-webkit-scrollbar {{
-            display: none;
-        }}
-        
-        .nav-tab {{
-            flex-shrink: 0;
-            padding: 0.75rem 1.25rem;
-            background: {COLORS['bg_card']};
-            border-radius: 12px;
-            color: {COLORS['text_secondary']};
-            font-weight: 600;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-            white-space: nowrap;
-        }}
-        
-        .nav-tab:hover {{
-            background: {COLORS['bg_card_hover']};
-            transform: translateY(-2px);
-        }}
-        
-        .nav-tab.active {{
-            background: linear-gradient(135deg, {COLORS['accent_orange']}, {COLORS['accent_pink']});
             color: {COLORS['text_primary']};
-            border-color: {COLORS['accent_orange']};
-            box-shadow: 0 4px 12px rgba(255, 153, 102, 0.4);
+        }}
+        
+        .user-badge {{
+            font-size: 0.85rem;
+            color: {COLORS['text_secondary']};
+            margin-top: 0.25rem;
         }}
         
         /* ==================== STATS CARDS ==================== */
@@ -242,6 +201,32 @@ def load_mobile_dark_css():
             margin-top: 0.2rem;
         }}
         
+        /* ==================== LOGIN/REGISTER CARD ==================== */
+        .auth-card {{
+            max-width: 400px;
+            margin: 4rem auto;
+            background: {COLORS['bg_card']};
+            border-radius: 24px;
+            padding: 3rem 2rem;
+            box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+        }}
+        
+        .auth-title {{
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 900;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, {COLORS['accent_orange']}, {COLORS['accent_pink']});
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }}
+        
+        .auth-logo {{
+            text-align: center;
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }}
+        
         /* ==================== INPUTS DARK ==================== */
         .stTextInput>div>div>input,
         .stNumberInput>div>div>input,
@@ -297,6 +282,9 @@ def load_mobile_dark_css():
             background: transparent;
             border-bottom: none;
             padding: 0 1.5rem;
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }}
         
         .stTabs [data-baseweb="tab"] {{
@@ -304,12 +292,15 @@ def load_mobile_dark_css():
             border-radius: 12px;
             color: {COLORS['text_secondary']};
             font-weight: 600;
-            padding: 0.875rem 1.5rem;
+            padding: 0.875rem 1.25rem;
+            white-space: nowrap;
+            flex-shrink: 0;
         }}
         
         .stTabs [aria-selected="true"] {{
             background: linear-gradient(135deg, {COLORS['accent_orange']}, {COLORS['accent_pink']});
             color: {COLORS['text_primary']};
+            box-shadow: 0 4px 12px rgba(255, 153, 102, 0.4);
         }}
         
         /* ==================== FORM CARD ==================== */
@@ -405,44 +396,62 @@ def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
+    # Table utilisateurs
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            nom_complet TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS revenus (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
             date TEXT NOT NULL,
             type_revenu TEXT NOT NULL,
             client TEXT,
             montant REAL NOT NULL,
             description TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
         )
     """)
     
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS depenses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
             date TEXT NOT NULL,
             type_depense TEXT NOT NULL,
             montant REAL NOT NULL,
             fournisseur TEXT,
             description TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
         )
     """)
     
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS epargne (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
             date TEXT NOT NULL,
             montant_depose REAL NOT NULL,
             objectif TEXT,
             solde_actuel REAL NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
         )
     """)
     
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS prets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
             nom_pret TEXT NOT NULL,
             montant_total REAL NOT NULL,
             montant_rembourse REAL DEFAULT 0,
@@ -450,18 +459,21 @@ def init_db():
             prochaine_echeance TEXT,
             solde_restant REAL NOT NULL,
             statut TEXT DEFAULT 'actif',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
         )
     """)
     
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS paiements_prets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
             pret_id INTEGER NOT NULL,
             montant REAL NOT NULL,
             date TEXT NOT NULL,
             note TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id),
             FOREIGN KEY (pret_id) REFERENCES prets (id)
         )
     """)
@@ -469,6 +481,7 @@ def init_db():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS projets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
             nom_projet TEXT NOT NULL,
             client TEXT,
             date_debut TEXT NOT NULL,
@@ -476,20 +489,23 @@ def init_db():
             etat TEXT DEFAULT 'En cours',
             budget_estime REAL,
             responsable TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
         )
     """)
     
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS clients (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
             nom_client TEXT NOT NULL,
             contact TEXT,
             type_service TEXT,
             date_service TEXT,
             montant_paye REAL,
             commentaires TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
         )
     """)
     
@@ -498,6 +514,41 @@ def init_db():
 
 def get_db_connection():
     return sqlite3.connect(DB_PATH)
+
+# ==================== AUTHENTIFICATION ====================
+def hash_password(password):
+    """Hash un mot de passe avec SHA-256"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def create_user(username, password, nom_complet):
+    """Créer un nouvel utilisateur"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        password_hash = hash_password(password)
+        cursor.execute("""
+            INSERT INTO users (username, password_hash, nom_complet)
+            VALUES (?, ?, ?)
+        """, (username, password_hash, nom_complet))
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.IntegrityError:
+        conn.close()
+        return False
+
+def verify_user(username, password):
+    """Vérifier les identifiants d'un utilisateur"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    password_hash = hash_password(password)
+    cursor.execute("""
+        SELECT id, nom_complet FROM users 
+        WHERE username = ? AND password_hash = ?
+    """, (username, password_hash))
+    result = cursor.fetchone()
+    conn.close()
+    return result
 
 # ==================== TYPES & CATÉGORIES ====================
 CATEGORIES_INFO = {
@@ -517,220 +568,170 @@ TYPES_REVENUS = ["Vente", "Service", "Consultation", "Abonnement", "Commission",
 TYPES_DEPENSES = list(CATEGORIES_INFO.keys()) + ["Loyer", "Équipement", "Maintenance", "Autre"]
 ETATS_PROJET = ["En cours", "Terminé", "En attente", "Annulé"]
 
-# ==================== FONCTIONS CRUD ====================
+# ==================== FONCTIONS CRUD (avec user_id) ====================
 
 # --- REVENUS ---
-def ajouter_revenu(date_rev, type_rev, client, montant, description):
+def ajouter_revenu(user_id, date_rev, type_rev, client, montant, description):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO revenus (date, type_revenu, client, montant, description)
-        VALUES (?, ?, ?, ?, ?)
-    """, (date_rev, type_rev, client, montant, description))
+        INSERT INTO revenus (user_id, date, type_revenu, client, montant, description)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (user_id, date_rev, type_rev, client, montant, description))
     conn.commit()
     conn.close()
 
-def get_revenus(mois=None, annee=None):
+def get_revenus(user_id, mois=None, annee=None):
     conn = get_db_connection()
-    query = "SELECT * FROM revenus"
-    params = []
+    query = "SELECT * FROM revenus WHERE user_id = ?"
+    params = [user_id]
     if mois and annee:
-        query += " WHERE strftime('%m', date) = ? AND strftime('%Y', date) = ?"
-        params = [f"{mois:02d}", str(annee)]
+        query += " AND strftime('%m', date) = ? AND strftime('%Y', date) = ?"
+        params.extend([f"{mois:02d}", str(annee)])
     query += " ORDER BY date DESC"
-    df = pd.read_sql_query(query, conn, params=params if params else None)
+    df = pd.read_sql_query(query, conn, params=params)
     conn.close()
     return df
 
 # --- DÉPENSES ---
-def ajouter_depense(date_dep, type_dep, montant, fournisseur, description):
+def ajouter_depense(user_id, date_dep, type_dep, montant, fournisseur, description):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO depenses (date, type_depense, montant, fournisseur, description)
-        VALUES (?, ?, ?, ?, ?)
-    """, (date_dep, type_dep, montant, fournisseur, description))
+        INSERT INTO depenses (user_id, date, type_depense, montant, fournisseur, description)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (user_id, date_dep, type_dep, montant, fournisseur, description))
     conn.commit()
     conn.close()
 
-def get_depenses(mois=None, annee=None):
+def get_depenses(user_id, mois=None, annee=None):
     conn = get_db_connection()
-    query = "SELECT * FROM depenses"
-    params = []
+    query = "SELECT * FROM depenses WHERE user_id = ?"
+    params = [user_id]
     if mois and annee:
-        query += " WHERE strftime('%m', date) = ? AND strftime('%Y', date) = ?"
-        params = [f"{mois:02d}", str(annee)]
+        query += " AND strftime('%m', date) = ? AND strftime('%Y', date) = ?"
+        params.extend([f"{mois:02d}", str(annee)])
     query += " ORDER BY date DESC"
-    df = pd.read_sql_query(query, conn, params=params if params else None)
+    df = pd.read_sql_query(query, conn, params=params)
     conn.close()
     return df
 
 # --- ÉPARGNE ---
-def ajouter_epargne(date_ep, montant_depose, objectif, solde_actuel):
+def ajouter_epargne(user_id, date_ep, montant_depose, objectif, solde_actuel):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO epargne (date, montant_depose, objectif, solde_actuel)
-        VALUES (?, ?, ?, ?)
-    """, (date_ep, montant_depose, objectif, solde_actuel))
+        INSERT INTO epargne (user_id, date, montant_depose, objectif, solde_actuel)
+        VALUES (?, ?, ?, ?, ?)
+    """, (user_id, date_ep, montant_depose, objectif, solde_actuel))
     conn.commit()
     conn.close()
 
-def get_epargne():
+def get_epargne(user_id):
     conn = get_db_connection()
-    df = pd.read_sql_query("SELECT * FROM epargne ORDER BY date DESC", conn)
+    df = pd.read_sql_query("SELECT * FROM epargne WHERE user_id = ? ORDER BY date DESC", conn, params=[user_id])
     conn.close()
     return df
 
-def get_solde_epargne():
-    df = get_epargne()
+def get_solde_epargne(user_id):
+    df = get_epargne(user_id)
     return df['solde_actuel'].iloc[0] if not df.empty else 0
 
 # --- PRÊTS ---
-def ajouter_pret(nom_pret, montant_total, echeance, prochaine_echeance):
+def ajouter_pret(user_id, nom_pret, montant_total, echeance, prochaine_echeance):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO prets (nom_pret, montant_total, echeance, prochaine_echeance, solde_restant)
-        VALUES (?, ?, ?, ?, ?)
-    """, (nom_pret, montant_total, echeance, prochaine_echeance, montant_total))
+        INSERT INTO prets (user_id, nom_pret, montant_total, echeance, prochaine_echeance, solde_restant)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (user_id, nom_pret, montant_total, echeance, prochaine_echeance, montant_total))
     conn.commit()
     conn.close()
 
-def ajouter_paiement_pret(pret_id, montant, date_paiement, note):
+def get_prets(user_id, statut=None):
     conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        INSERT INTO paiements_prets (pret_id, montant, date, note)
-        VALUES (?, ?, ?, ?)
-    """, (pret_id, montant, date_paiement, note))
-    
-    cursor.execute("""
-        UPDATE prets 
-        SET montant_rembourse = montant_rembourse + ?,
-            solde_restant = montant_total - (montant_rembourse + ?)
-        WHERE id = ?
-    """, (montant, montant, pret_id))
-    
-    cursor.execute("SELECT montant_total, montant_rembourse FROM prets WHERE id = ?", (pret_id,))
-    total, rembourse = cursor.fetchone()
-    if rembourse >= total:
-        cursor.execute("UPDATE prets SET statut = 'termine' WHERE id = ?", (pret_id,))
-    
-    conn.commit()
-    conn.close()
-
-def get_prets(statut=None):
-    conn = get_db_connection()
-    query = "SELECT * FROM prets"
-    params = []
+    query = "SELECT * FROM prets WHERE user_id = ?"
+    params = [user_id]
     if statut:
-        query += " WHERE statut = ?"
+        query += " AND statut = ?"
         params.append(statut)
     query += " ORDER BY created_at DESC"
-    df = pd.read_sql_query(query, conn, params=params if params else None)
+    df = pd.read_sql_query(query, conn, params=params)
     conn.close()
     return df
 
 # --- PROJETS ---
-def ajouter_projet(nom, client, date_debut, date_fin, etat, budget, responsable):
+def ajouter_projet(user_id, nom, client, date_debut, date_fin, etat, budget, responsable):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO projets (nom_projet, client, date_debut, date_fin, etat, budget_estime, responsable)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (nom, client, date_debut, date_fin, etat, budget, responsable))
+        INSERT INTO projets (user_id, nom_projet, client, date_debut, date_fin, etat, budget_estime, responsable)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (user_id, nom, client, date_debut, date_fin, etat, budget, responsable))
     conn.commit()
     conn.close()
 
-def get_projets(etat=None):
+def get_projets(user_id, etat=None):
     conn = get_db_connection()
-    query = "SELECT * FROM projets"
-    params = []
+    query = "SELECT * FROM projets WHERE user_id = ?"
+    params = [user_id]
     if etat:
-        query += " WHERE etat = ?"
+        query += " AND etat = ?"
         params.append(etat)
     query += " ORDER BY date_debut DESC"
-    df = pd.read_sql_query(query, conn, params=params if params else None)
+    df = pd.read_sql_query(query, conn, params=params)
     conn.close()
     return df
 
 # --- CLIENTS ---
-def ajouter_client(nom, contact, type_service, date_service, montant, commentaires):
+def ajouter_client(user_id, nom, contact, type_service, date_service, montant, commentaires):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO clients (nom_client, contact, type_service, date_service, montant_paye, commentaires)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (nom, contact, type_service, date_service, montant, commentaires))
+        INSERT INTO clients (user_id, nom_client, contact, type_service, date_service, montant_paye, commentaires)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (user_id, nom, contact, type_service, date_service, montant, commentaires))
     conn.commit()
     conn.close()
 
-def get_clients():
+def get_clients(user_id):
     conn = get_db_connection()
-    df = pd.read_sql_query("SELECT * FROM clients ORDER BY date_service DESC", conn)
+    df = pd.read_sql_query("SELECT * FROM clients WHERE user_id = ? ORDER BY date_service DESC", conn, params=[user_id])
     conn.close()
     return df
 
 # ==================== CALCULS ====================
-def calculer_soldes(mois, annee):
-    """Calcul du solde = Revenus - Dépenses"""
-    revenus_df = get_revenus(mois, annee)
-    depenses_df = get_depenses(mois, annee)
+def calculer_soldes(user_id, mois, annee):
+    """Calcul du solde = Revenus - Dépenses pour un utilisateur"""
+    revenus_df = get_revenus(user_id, mois, annee)
+    depenses_df = get_depenses(user_id, mois, annee)
     
     total_revenus = revenus_df['montant'].sum() if not revenus_df.empty else 0
     total_depenses = depenses_df['montant'].sum() if not depenses_df.empty else 0
-    solde = total_revenus - total_depenses  # SOLDE = REVENUS - DÉPENSES
+    solde = total_revenus - total_depenses
     
     return {
         'revenus': total_revenus,
         'depenses': total_depenses,
-        'solde': solde  # Nouveau: solde restant
+        'solde': solde
     }
 
 # ==================== COMPOSANTS UI ====================
-def render_mobile_header():
+def render_mobile_header(nom_utilisateur):
     st.markdown(f"""
         <div class="mobile-header">
             <div class="header-left">
                 <div class="header-icon">💎</div>
-                <div class="app-title">Finance Pro</div>
+                <div>
+                    <div class="app-title">Finance Pro</div>
+                    <div class="user-badge">👤 {nom_utilisateur}</div>
+                </div>
             </div>
             <div style="display: flex; gap: 0.75rem;">
-                <div class="header-icon">🔔</div>
-                <div class="header-icon">👁️</div>
+                <div class="header-icon" style="background: {COLORS['bg_card']}; width: 40px; height: 40px; font-size: 1.2rem;">🔔</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
-
-def render_horizontal_nav(active_page):
-    """Navigation horizontale en haut"""
-    pages = [
-        ("📊", "Dashboard"),
-        ("💰", "Revenus"),
-        ("💸", "Dépenses"),
-        ("💎", "Épargne"),
-        ("💳", "Prêts"),
-        ("📋", "Projets"),
-        ("👥", "Clients"),
-    ]
-    
-    nav_html = '<div class="horizontal-nav">'
-    for icon, label in pages:
-        active_class = "active" if label == active_page else ""
-        nav_html += f'<div class="nav-tab {active_class}">{icon} {label}</div>'
-    nav_html += '</div>'
-    
-    st.markdown(nav_html, unsafe_allow_html=True)
-    
-    # Utiliser des colonnes pour la navigation cliquable
-    cols = st.columns(len(pages))
-    for idx, (icon, label) in enumerate(pages):
-        with cols[idx]:
-            if st.button(f"{icon}", key=f"nav_{label}", use_container_width=True):
-                st.session_state.page = label
-                st.rerun()
 
 def render_month_selector():
     st.markdown('<div style="padding: 0 1.5rem 1rem 1.5rem;">', unsafe_allow_html=True)
@@ -764,8 +765,7 @@ def render_month_selector():
     st.markdown('</div>', unsafe_allow_html=True)
     return months_options[selected]
 
-def render_stats_cards(soldes, epargne=0, prets=0):
-    """4 cartes avec SOLDE au lieu de Bénéfice"""
+def render_stats_cards(soldes, epargne=0):
     st.markdown(f"""
         <div class="stats-row">
             <div class="stat-card">
@@ -858,22 +858,74 @@ def render_category_list(depenses_df, total_depenses):
     
     st.markdown('</div>', unsafe_allow_html=True)
 
-# ==================== PAGES ====================
+# ==================== PAGE LOGIN/REGISTER ====================
+def page_auth():
+    st.markdown('<div class="auth-card">', unsafe_allow_html=True)
+    st.markdown('<div class="auth-logo">💎</div>', unsafe_allow_html=True)
+    st.markdown('<div class="auth-title">Finance Pro</div>', unsafe_allow_html=True)
+    
+    tab1, tab2 = st.tabs(["🔐 Connexion", "✨ Inscription"])
+    
+    with tab1:
+        with st.form("login_form"):
+            username = st.text_input("Nom d'utilisateur", key="login_username")
+            password = st.text_input("Mot de passe", type="password", key="login_password")
+            
+            if st.form_submit_button("Se connecter", use_container_width=True):
+                if username and password:
+                    result = verify_user(username, password)
+                    if result:
+                        st.session_state.logged_in = True
+                        st.session_state.user_id = result[0]
+                        st.session_state.nom_utilisateur = result[1] or username
+                        st.success(f"✅ Bienvenue {st.session_state.nom_utilisateur} !")
+                        st.rerun()
+                    else:
+                        st.error("❌ Identifiants incorrects !")
+                else:
+                    st.warning("⚠️ Veuillez remplir tous les champs")
+    
+    with tab2:
+        with st.form("register_form"):
+            nom_complet = st.text_input("Nom complet", key="reg_nom")
+            username = st.text_input("Nom d'utilisateur", key="reg_username")
+            password = st.text_input("Mot de passe", type="password", key="reg_password")
+            password_confirm = st.text_input("Confirmer le mot de passe", type="password", key="reg_password_confirm")
+            
+            if st.form_submit_button("S'inscrire", use_container_width=True):
+                if nom_complet and username and password and password_confirm:
+                    if password != password_confirm:
+                        st.error("❌ Les mots de passe ne correspondent pas !")
+                    elif len(password) < 6:
+                        st.error("❌ Le mot de passe doit contenir au moins 6 caractères")
+                    else:
+                        if create_user(username, password, nom_complet):
+                            st.success("✅ Compte créé ! Vous pouvez vous connecter.")
+                        else:
+                            st.error("❌ Ce nom d'utilisateur existe déjà !")
+                else:
+                    st.warning("⚠️ Veuillez remplir tous les champs")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ==================== PAGES PRINCIPALES ====================
 
 def page_dashboard():
-    render_mobile_header()
-    render_horizontal_nav("Dashboard")
+    user_id = st.session_state.user_id
+    nom_utilisateur = st.session_state.nom_utilisateur
+    
+    render_mobile_header(nom_utilisateur)
     
     mois, annee = render_month_selector()
     
-    soldes = calculer_soldes(mois, annee)
-    epargne_total = get_solde_epargne()
+    soldes = calculer_soldes(user_id, mois, annee)
+    epargne_total = get_solde_epargne(user_id)
     
     st.markdown('<div class="content-container">', unsafe_allow_html=True)
     
     render_stats_cards(soldes, epargne_total)
     
-    depenses_df = get_depenses(mois, annee)
+    depenses_df = get_depenses(user_id, mois, annee)
     
     if not depenses_df.empty:
         render_circular_chart(depenses_df, soldes['depenses'])
@@ -889,8 +941,10 @@ def page_dashboard():
     st.markdown('</div>', unsafe_allow_html=True)
 
 def page_revenus():
-    render_mobile_header()
-    render_horizontal_nav("Revenus")
+    user_id = st.session_state.user_id
+    nom_utilisateur = st.session_state.nom_utilisateur
+    
+    render_mobile_header(nom_utilisateur)
     
     st.title("💰 Revenus")
     
@@ -910,13 +964,13 @@ def page_revenus():
             
             if st.form_submit_button("💾 Enregistrer"):
                 if montant > 0:
-                    ajouter_revenu(str(date_rev), type_rev, client, montant, description)
+                    ajouter_revenu(user_id, str(date_rev), type_rev, client, montant, description)
                     st.success("✅ Revenu enregistré!")
                     st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
     
     with tab2:
-        df = get_revenus()
+        df = get_revenus(user_id)
         if not df.empty:
             st.metric("💵 Total", f"{df['montant'].sum():,.0f} FCFA")
             st.dataframe(df[['date', 'type_revenu', 'client', 'montant']], use_container_width=True)
@@ -924,8 +978,10 @@ def page_revenus():
             st.info("Aucun revenu")
 
 def page_depenses():
-    render_mobile_header()
-    render_horizontal_nav("Dépenses")
+    user_id = st.session_state.user_id
+    nom_utilisateur = st.session_state.nom_utilisateur
+    
+    render_mobile_header(nom_utilisateur)
     
     st.title("💸 Dépenses")
     
@@ -945,13 +1001,13 @@ def page_depenses():
             
             if st.form_submit_button("💾 Enregistrer"):
                 if montant > 0:
-                    ajouter_depense(str(date_dep), type_dep, montant, fournisseur, description)
+                    ajouter_depense(user_id, str(date_dep), type_dep, montant, fournisseur, description)
                     st.success("✅ Dépense enregistrée!")
                     st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
     
     with tab2:
-        df = get_depenses()
+        df = get_depenses(user_id)
         if not df.empty:
             st.metric("💸 Total", f"{df['montant'].sum():,.0f} FCFA")
             st.dataframe(df[['date', 'type_depense', 'fournisseur', 'montant']], use_container_width=True)
@@ -959,8 +1015,10 @@ def page_depenses():
             st.info("Aucune dépense")
 
 def page_epargne():
-    render_mobile_header()
-    render_horizontal_nav("Épargne")
+    user_id = st.session_state.user_id
+    nom_utilisateur = st.session_state.nom_utilisateur
+    
+    render_mobile_header(nom_utilisateur)
     
     st.title("💎 Épargne")
     
@@ -979,23 +1037,25 @@ def page_epargne():
             
             if st.form_submit_button("💾 Enregistrer"):
                 if montant_depose > 0:
-                    ajouter_epargne(str(date_ep), montant_depose, objectif, solde_actuel)
+                    ajouter_epargne(user_id, str(date_ep), montant_depose, objectif, solde_actuel)
                     st.success("✅ Dépôt enregistré!")
                     st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
     
     with tab2:
-        df = get_epargne()
+        df = get_epargne(user_id)
         if not df.empty:
-            solde = get_solde_epargne()
+            solde = get_solde_epargne(user_id)
             st.metric("💰 Solde", f"{solde:,.0f} FCFA")
             st.dataframe(df[['date', 'montant_depose', 'objectif', 'solde_actuel']], use_container_width=True)
         else:
             st.info("Aucun dépôt")
 
 def page_prets():
-    render_mobile_header()
-    render_horizontal_nav("Prêts")
+    user_id = st.session_state.user_id
+    nom_utilisateur = st.session_state.nom_utilisateur
+    
+    render_mobile_header(nom_utilisateur)
     
     st.title("💳 Prêts")
     
@@ -1014,13 +1074,13 @@ def page_prets():
             
             if st.form_submit_button("💾 Enregistrer"):
                 if nom_pret and montant_total > 0:
-                    ajouter_pret(nom_pret, montant_total, str(echeance), str(prochaine))
+                    ajouter_pret(user_id, nom_pret, montant_total, str(echeance), str(prochaine))
                     st.success("✅ Prêt enregistré!")
                     st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
     
     with tab2:
-        prets = get_prets(statut='actif')
+        prets = get_prets(user_id, statut='actif')
         if not prets.empty:
             for _, pret in prets.iterrows():
                 prog = (pret['montant_rembourse'] / pret['montant_total']) * 100
@@ -1031,8 +1091,10 @@ def page_prets():
             st.info("Aucun prêt")
 
 def page_projets():
-    render_mobile_header()
-    render_horizontal_nav("Projets")
+    user_id = st.session_state.user_id
+    nom_utilisateur = st.session_state.nom_utilisateur
+    
+    render_mobile_header(nom_utilisateur)
     
     st.title("📋 Projets")
     
@@ -1054,21 +1116,23 @@ def page_projets():
             
             if st.form_submit_button("💾 Créer"):
                 if nom:
-                    ajouter_projet(nom, client, str(debut), str(fin), etat, budget, responsable)
+                    ajouter_projet(user_id, nom, client, str(debut), str(fin), etat, budget, responsable)
                     st.success("✅ Projet créé!")
                     st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
     
     with tab2:
-        df = get_projets()
+        df = get_projets(user_id)
         if not df.empty:
             st.dataframe(df[['nom_projet', 'client', 'etat', 'budget_estime']], use_container_width=True)
         else:
             st.info("Aucun projet")
 
 def page_clients():
-    render_mobile_header()
-    render_horizontal_nav("Clients")
+    user_id = st.session_state.user_id
+    nom_utilisateur = st.session_state.nom_utilisateur
+    
+    render_mobile_header(nom_utilisateur)
     
     st.title("👥 Clients")
     
@@ -1089,43 +1153,65 @@ def page_clients():
             
             if st.form_submit_button("💾 Enregistrer"):
                 if nom:
-                    ajouter_client(nom, contact, type_service, str(date_service), montant, commentaires)
+                    ajouter_client(user_id, nom, contact, type_service, str(date_service), montant, commentaires)
                     st.success("✅ Client enregistré!")
                     st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
     
     with tab2:
-        df = get_clients()
+        df = get_clients(user_id)
         if not df.empty:
             st.metric("💰 Total CA", f"{df['montant_paye'].sum():,.0f} FCFA")
             st.dataframe(df[['nom_client', 'contact', 'type_service', 'montant_paye']], use_container_width=True)
         else:
             st.info("Aucun client")
 
+# ==================== NAVIGATION TABS ====================
+def render_nav_tabs():
+    """Navigation par tabs Streamlit (propre, sans duplication)"""
+    tabs = st.tabs(["📊 Dashboard", "💰 Revenus", "💸 Dépenses", "💎 Épargne", "💳 Prêts", "📋 Projets", "👥 Clients", "🚪 Déconnexion"])
+    
+    with tabs[0]:
+        page_dashboard()
+    with tabs[1]:
+        page_revenus()
+    with tabs[2]:
+        page_depenses()
+    with tabs[3]:
+        page_epargne()
+    with tabs[4]:
+        page_prets()
+    with tabs[5]:
+        page_projets()
+    with tabs[6]:
+        page_clients()
+    with tabs[7]:
+        st.markdown('<div style="padding: 2rem;">', unsafe_allow_html=True)
+        if st.button("🚪 Se déconnecter", use_container_width=True):
+            st.session_state.logged_in = False
+            st.session_state.user_id = None
+            st.session_state.nom_utilisateur = None
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
 # ==================== MAIN ====================
 def main():
     init_db()
     load_mobile_dark_css()
     
-    # Initialiser la page par défaut
-    if 'page' not in st.session_state:
-        st.session_state.page = 'Dashboard'
+    # Initialiser les variables de session
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+    if 'user_id' not in st.session_state:
+        st.session_state.user_id = None
+    if 'nom_utilisateur' not in st.session_state:
+        st.session_state.nom_utilisateur = None
     
     # Router
-    if st.session_state.page == 'Dashboard':
-        page_dashboard()
-    elif st.session_state.page == 'Revenus':
-        page_revenus()
-    elif st.session_state.page == 'Dépenses':
-        page_depenses()
-    elif st.session_state.page == 'Épargne':
-        page_epargne()
-    elif st.session_state.page == 'Prêts':
-        page_prets()
-    elif st.session_state.page == 'Projets':
-        page_projets()
-    elif st.session_state.page == 'Clients':
-        page_clients()
+    if not st.session_state.logged_in:
+        page_auth()
+    else:
+        render_nav_tabs()
 
 if __name__ == "__main__":
     main()
