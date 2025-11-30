@@ -11,7 +11,7 @@ st.set_page_config(
     page_title="Finance Pro",
     page_icon="💎",
     layout="wide",
-    initial_sidebar_state="expanded"  # Sidebar toujours visible
+    initial_sidebar_state="collapsed"
 )
 
 # ==================== DARK THEME COLORS ====================
@@ -32,7 +32,7 @@ COLORS = {
     'warning': '#ffaa00',
 }
 
-# ==================== CSS MOBILE DARK ====================
+# ==================== CSS MOBILE AVEC NAV HORIZONTALE ====================
 def load_mobile_dark_css():
     st.markdown(f"""
     <style>
@@ -52,10 +52,20 @@ def load_mobile_dark_css():
         
         /* ==================== MOBILE HEADER ==================== */
         .mobile-header {{
-            padding: 1.5rem 1.5rem 1rem 1.5rem;
+            padding: 1rem 1.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background: {COLORS['bg_dark']};
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }}
+        
+        .header-left {{
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
         }}
         
         .header-icon {{
@@ -67,13 +77,59 @@ def load_mobile_dark_css():
             align-items: center;
             justify-content: center;
             font-size: 1.2rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
         }}
         
-        .header-icon:hover {{
+        .app-title {{
+            font-size: 1.3rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, {COLORS['accent_orange']}, {COLORS['accent_pink']});
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }}
+        
+        /* ==================== NAVIGATION HORIZONTALE ==================== */
+        .horizontal-nav {{
+            display: flex;
+            gap: 0.5rem;
+            padding: 1rem 1.5rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            position: sticky;
+            top: 72px;
+            background: {COLORS['bg_dark']};
+            z-index: 99;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }}
+        
+        .horizontal-nav::-webkit-scrollbar {{
+            display: none;
+        }}
+        
+        .nav-tab {{
+            flex-shrink: 0;
+            padding: 0.75rem 1.25rem;
+            background: {COLORS['bg_card']};
+            border-radius: 12px;
+            color: {COLORS['text_secondary']};
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            white-space: nowrap;
+        }}
+        
+        .nav-tab:hover {{
             background: {COLORS['bg_card_hover']};
-            transform: scale(1.05);
+            transform: translateY(-2px);
+        }}
+        
+        .nav-tab.active {{
+            background: linear-gradient(135deg, {COLORS['accent_orange']}, {COLORS['accent_pink']});
+            color: {COLORS['text_primary']};
+            border-color: {COLORS['accent_orange']};
+            box-shadow: 0 4px 12px rgba(255, 153, 102, 0.4);
         }}
         
         /* ==================== STATS CARDS ==================== */
@@ -143,7 +199,6 @@ def load_mobile_dark_css():
             padding: 1.25rem;
             margin-bottom: 0.75rem;
             transition: all 0.3s ease;
-            cursor: pointer;
         }}
         
         .category-item:hover {{
@@ -185,40 +240,6 @@ def load_mobile_dark_css():
             font-size: 0.8rem;
             color: {COLORS['text_secondary']};
             margin-top: 0.2rem;
-        }}
-        
-        /* ==================== BOTTOM NAV ==================== */
-        .bottom-nav {{
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: {COLORS['bg_card']};
-            border-top: 1px solid rgba(255,255,255,0.05);
-            padding: 0.75rem 0.5rem;
-            display: flex;
-            justify-content: space-around;
-            z-index: 1000;
-        }}
-        
-        .nav-item {{
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.2rem;
-            font-size: 0.65rem;
-            color: {COLORS['text_secondary']};
-            cursor: pointer;
-            padding: 0.5rem;
-            transition: all 0.3s ease;
-        }}
-        
-        .nav-item.active {{
-            color: {COLORS['accent_orange']};
-        }}
-        
-        .nav-icon {{
-            font-size: 1.3rem;
         }}
         
         /* ==================== INPUTS DARK ==================== */
@@ -316,7 +337,7 @@ def load_mobile_dark_css():
         
         /* ==================== CONTENT CONTAINER ==================== */
         .content-container {{
-            padding-bottom: 6rem;
+            padding-bottom: 2rem;
         }}
         
         /* ==================== DATAFRAME ==================== */
@@ -350,63 +371,9 @@ def load_mobile_dark_css():
             font-weight: 600;
         }}
         
-        /* ==================== SIDEBAR ==================== */
+        /* ==================== SIDEBAR HIDDEN ==================== */
         [data-testid="stSidebar"] {{
-            background: {COLORS['bg_dark']};
-            border-right: 1px solid rgba(255,255,255,0.05);
-        }}
-        
-        /* Forcer la visibilité de la sidebar */
-        [data-testid="stSidebar"][aria-expanded="true"] {{
-            display: block !important;
-        }}
-        
-        /* Bouton hamburger stylé */
-        button[kind="header"] {{
-            background: {COLORS['bg_card']} !important;
-            border-radius: 12px !important;
-            padding: 0.75rem !important;
-            border: 2px solid {COLORS['accent_orange']} !important;
-            color: {COLORS['text_primary']} !important;
-        }}
-        
-        button[kind="header"]:hover {{
-            background: {COLORS['bg_card_hover']} !important;
-            border-color: {COLORS['accent_pink']} !important;
-        }}
-        
-        /* Mobile responsive */
-        @media (max-width: 768px) {{
-            /* Bouton menu visible en haut à gauche */
-            button[kind="header"] {{
-                position: fixed !important;
-                top: 1rem !important;
-                left: 1rem !important;
-                z-index: 1001 !important;
-                box-shadow: 0 4px 12px rgba(255, 153, 102, 0.3) !important;
-            }}
-            
-            /* Sidebar pleine hauteur sur mobile */
-            [data-testid="stSidebar"] {{
-                position: fixed;
-                left: 0;
-                top: 0;
-                height: 100vh;
-                z-index: 1000;
-                width: 280px !important;
-            }}
-            
-            /* Overlay derrière la sidebar */
-            [data-testid="stSidebar"]::before {{
-                content: '';
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.5);
-                z-index: -1;
-            }}
+            display: none !important;
         }}
         
         /* ==================== HIDE BRANDING ==================== */
@@ -708,35 +675,62 @@ def get_clients():
 
 # ==================== CALCULS ====================
 def calculer_soldes(mois, annee):
+    """Calcul du solde = Revenus - Dépenses"""
     revenus_df = get_revenus(mois, annee)
     depenses_df = get_depenses(mois, annee)
     
     total_revenus = revenus_df['montant'].sum() if not revenus_df.empty else 0
     total_depenses = depenses_df['montant'].sum() if not depenses_df.empty else 0
+    solde = total_revenus - total_depenses  # SOLDE = REVENUS - DÉPENSES
     
     return {
         'revenus': total_revenus,
         'depenses': total_depenses,
-        'benefice': total_revenus - total_depenses
+        'solde': solde  # Nouveau: solde restant
     }
 
 # ==================== COMPOSANTS UI ====================
 def render_mobile_header():
     st.markdown(f"""
         <div class="mobile-header">
-            <div style="display: flex; align-items: center; gap: 1rem;">
+            <div class="header-left">
                 <div class="header-icon">💎</div>
-                <div style="font-size: 1.2rem; font-weight: 700; color: {COLORS['accent_orange']};">Finance Pro</div>
+                <div class="app-title">Finance Pro</div>
             </div>
-            <div style="display: flex; gap: 1rem;">
+            <div style="display: flex; gap: 0.75rem;">
                 <div class="header-icon">🔔</div>
                 <div class="header-icon">👁️</div>
             </div>
         </div>
-        <div style="text-align: center; padding: 0.5rem; color: {COLORS['text_secondary']}; font-size: 0.85rem;">
-            👈 Ouvrez le menu pour naviguer
-        </div>
     """, unsafe_allow_html=True)
+
+def render_horizontal_nav(active_page):
+    """Navigation horizontale en haut"""
+    pages = [
+        ("📊", "Dashboard"),
+        ("💰", "Revenus"),
+        ("💸", "Dépenses"),
+        ("💎", "Épargne"),
+        ("💳", "Prêts"),
+        ("📋", "Projets"),
+        ("👥", "Clients"),
+    ]
+    
+    nav_html = '<div class="horizontal-nav">'
+    for icon, label in pages:
+        active_class = "active" if label == active_page else ""
+        nav_html += f'<div class="nav-tab {active_class}">{icon} {label}</div>'
+    nav_html += '</div>'
+    
+    st.markdown(nav_html, unsafe_allow_html=True)
+    
+    # Utiliser des colonnes pour la navigation cliquable
+    cols = st.columns(len(pages))
+    for idx, (icon, label) in enumerate(pages):
+        with cols[idx]:
+            if st.button(f"{icon}", key=f"nav_{label}", use_container_width=True):
+                st.session_state.page = label
+                st.rerun()
 
 def render_month_selector():
     st.markdown('<div style="padding: 0 1.5rem 1rem 1.5rem;">', unsafe_allow_html=True)
@@ -771,24 +765,25 @@ def render_month_selector():
     return months_options[selected]
 
 def render_stats_cards(soldes, epargne=0, prets=0):
+    """4 cartes avec SOLDE au lieu de Bénéfice"""
     st.markdown(f"""
         <div class="stats-row">
             <div class="stat-card">
-                <div class="stat-label">↙️ Dépenses</div>
+                <div class="stat-label">💰 Revenus</div>
+                <div class="stat-value positive">+{soldes['revenus']:,.0f} FCFA</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">💸 Dépenses</div>
                 <div class="stat-value negative">-{soldes['depenses']:,.0f} FCFA</div>
                 <div class="stat-underline"></div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">↗️ Revenus</div>
-                <div class="stat-value positive">+{soldes['revenus']:,.0f} FCFA</div>
+                <div class="stat-label">💵 Solde</div>
+                <div class="stat-value {'positive' if soldes['solde'] >= 0 else 'negative'}">{soldes['solde']:+,.0f} FCFA</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">💎 Épargne</div>
                 <div class="stat-value neutral">{epargne:,.0f} FCFA</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">💳 Prêts</div>
-                <div class="stat-value neutral">{prets:,.0f} FCFA</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -863,26 +858,20 @@ def render_category_list(depenses_df, total_depenses):
     
     st.markdown('</div>', unsafe_allow_html=True)
 
-def render_bottom_nav(active="dashboard"):
-    """Bottom navigation avec état de session pour interaction"""
-    # Note: La bottom nav est purement visuelle dans Streamlit
-    # La navigation réelle se fait via la sidebar
-    pass  # On désactive temporairement pour éviter l'affichage du code
-
 # ==================== PAGES ====================
 
 def page_dashboard():
     render_mobile_header()
+    render_horizontal_nav("Dashboard")
+    
     mois, annee = render_month_selector()
     
     soldes = calculer_soldes(mois, annee)
     epargne_total = get_solde_epargne()
-    prets_actifs = get_prets(statut='actif')
-    total_prets = prets_actifs['solde_restant'].sum() if not prets_actifs.empty else 0
     
     st.markdown('<div class="content-container">', unsafe_allow_html=True)
     
-    render_stats_cards(soldes, epargne_total, total_prets)
+    render_stats_cards(soldes, epargne_total)
     
     depenses_df = get_depenses(mois, annee)
     
@@ -898,9 +887,11 @@ def page_dashboard():
         """, unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
-    # render_bottom_nav("dashboard")  # Désactivé
 
 def page_revenus():
+    render_mobile_header()
+    render_horizontal_nav("Revenus")
+    
     st.title("💰 Revenus")
     
     tab1, tab2 = st.tabs(["➕ Ajouter", "📋 Historique"])
@@ -931,10 +922,11 @@ def page_revenus():
             st.dataframe(df[['date', 'type_revenu', 'client', 'montant']], use_container_width=True)
         else:
             st.info("Aucun revenu")
-    
-    # Navigation via sidebar uniquement
 
 def page_depenses():
+    render_mobile_header()
+    render_horizontal_nav("Dépenses")
+    
     st.title("💸 Dépenses")
     
     tab1, tab2 = st.tabs(["➕ Ajouter", "📋 Historique"])
@@ -965,10 +957,11 @@ def page_depenses():
             st.dataframe(df[['date', 'type_depense', 'fournisseur', 'montant']], use_container_width=True)
         else:
             st.info("Aucune dépense")
-    
-    # Navigation via sidebar
 
 def page_epargne():
+    render_mobile_header()
+    render_horizontal_nav("Épargne")
+    
     st.title("💎 Épargne")
     
     tab1, tab2 = st.tabs(["➕ Ajouter", "📊 Suivi"])
@@ -999,10 +992,11 @@ def page_epargne():
             st.dataframe(df[['date', 'montant_depose', 'objectif', 'solde_actuel']], use_container_width=True)
         else:
             st.info("Aucun dépôt")
-    
-    # Navigation via sidebar
 
 def page_prets():
+    render_mobile_header()
+    render_horizontal_nav("Prêts")
+    
     st.title("💳 Prêts")
     
     tab1, tab2 = st.tabs(["➕ Nouveau", "📊 Suivi"])
@@ -1035,10 +1029,11 @@ def page_prets():
                     st.write(f"**Restant:** {pret['solde_restant']:,.0f} FCFA")
         else:
             st.info("Aucun prêt")
-    
-    # Navigation via sidebar
 
 def page_projets():
+    render_mobile_header()
+    render_horizontal_nav("Projets")
+    
     st.title("📋 Projets")
     
     tab1, tab2 = st.tabs(["➕ Nouveau", "📊 Liste"])
@@ -1070,10 +1065,11 @@ def page_projets():
             st.dataframe(df[['nom_projet', 'client', 'etat', 'budget_estime']], use_container_width=True)
         else:
             st.info("Aucun projet")
-    
-    # Navigation via sidebar
 
 def page_clients():
+    render_mobile_header()
+    render_horizontal_nav("Clients")
+    
     st.title("👥 Clients")
     
     tab1, tab2 = st.tabs(["➕ Ajouter", "📋 Liste"])
@@ -1105,43 +1101,30 @@ def page_clients():
             st.dataframe(df[['nom_client', 'contact', 'type_service', 'montant_paye']], use_container_width=True)
         else:
             st.info("Aucun client")
-    
-    # Navigation via sidebar
 
 # ==================== MAIN ====================
 def main():
     init_db()
     load_mobile_dark_css()
     
-    # Menu simple dans sidebar
-    with st.sidebar:
-        st.markdown("""
-            <div style='text-align: center; padding: 2rem 1rem;'>
-                <div style='font-size: 3rem;'>💎</div>
-                <h2 style='color: #ff9966;'>Finance Pro</h2>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        menu = st.radio(
-            "Menu",
-            ["📊 Dashboard", "💰 Revenus", "💸 Dépenses", "💎 Épargne", 
-             "💳 Prêts", "📋 Projets", "👥 Clients"],
-            label_visibility="collapsed"
-        )
+    # Initialiser la page par défaut
+    if 'page' not in st.session_state:
+        st.session_state.page = 'Dashboard'
     
-    if menu == "📊 Dashboard":
+    # Router
+    if st.session_state.page == 'Dashboard':
         page_dashboard()
-    elif menu == "💰 Revenus":
+    elif st.session_state.page == 'Revenus':
         page_revenus()
-    elif menu == "💸 Dépenses":
+    elif st.session_state.page == 'Dépenses':
         page_depenses()
-    elif menu == "💎 Épargne":
+    elif st.session_state.page == 'Épargne':
         page_epargne()
-    elif menu == "💳 Prêts":
+    elif st.session_state.page == 'Prêts':
         page_prets()
-    elif menu == "📋 Projets":
+    elif st.session_state.page == 'Projets':
         page_projets()
-    elif menu == "👥 Clients":
+    elif st.session_state.page == 'Clients':
         page_clients()
 
 if __name__ == "__main__":
