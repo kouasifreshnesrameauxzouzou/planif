@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, date
 import plotly.graph_objects as go
 import calendar
+import time
 
 # ==================== CONFIGURATION ====================
 st.set_page_config(
@@ -828,7 +829,7 @@ def page_revenus():
                 st.success(f"✅ Revenu de {montant:,.0f} FCFA enregistré avec succès !", icon="✅")
                 st.balloons()
                 # Attendre 2 secondes pour voir le message
-                import time
+
                 time.sleep(2)
                 # Rediriger vers dashboard
                 st.session_state.active_page = 'dashboard'
@@ -920,7 +921,7 @@ def page_depenses():
                 st.success(f"✅ Dépense de {montant:,.0f} FCFA enregistrée avec succès !", icon="✅")
                 st.balloons()
                 # Attendre 2 secondes
-                import time
+
                 time.sleep(2)
                 # Rediriger vers dashboard
                 st.session_state.active_page = 'dashboard'
@@ -962,7 +963,7 @@ def page_depenses():
                             st.session_state.depenses.pop(original_idx)
                             save_data()
                             st.success("✅ Dépense supprimée !")
-                            import time
+            
                             time.sleep(1)
                             st.rerun()
         else:
@@ -1011,7 +1012,7 @@ def page_epargne():
                 save_data()
                 st.success(f"✅ Dépôt de {montant_depose:,.0f} FCFA enregistré ! Nouveau solde : {nouveau_solde:,.0f} FCFA", icon="✅")
                 st.balloons()
-                import time
+
                 time.sleep(2)
                 st.session_state.active_page = 'dashboard'
                 st.rerun()
@@ -1057,7 +1058,7 @@ def page_epargne():
                             st.session_state.epargne.pop(original_idx)
                             save_data()
                             st.success("✅ Dépôt supprimé !")
-                            import time
+            
                             time.sleep(1)
                             st.rerun()
         else:
@@ -1108,7 +1109,7 @@ def page_prets():
                 save_data()
                 st.success(f"✅ Prêt '{nom_pret}' de {montant_total:,.0f} FCFA enregistré avec succès !", icon="✅")
                 st.balloons()
-                import time
+
                 time.sleep(2)
                 st.session_state.active_page = 'dashboard'
                 st.rerun()
@@ -1179,7 +1180,7 @@ def page_prets():
                         save_data()
                         st.success(f"✅ Remboursement de {montant_remb:,.0f} FCFA enregistré !", icon="✅")
                     
-                    import time
+    
                     time.sleep(2)
                     st.session_state.active_page = 'dashboard'
                     st.rerun()
