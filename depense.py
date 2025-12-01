@@ -416,6 +416,62 @@ def get_prets_df(statut=None):
         df = df[df['statut'] == statut]
     return df
 
+def calculer_soldes_periode(periode_type, param1, param2):
+    """Calcule les soldes selon la période sélectionnée"""
+    revenus_df = pd.DataFrame(st.session_state.revenus) if st.session_state.revenus else pd.DataFrame()
+    depenses_df = pd.DataFrame(st.session_state.depenses) if st.session_state.depenses else pd.DataFrame()
+    
+    if not revenus_df.empty:
+        revenus_df['date'] = pd.to_datetime(revenus_df['date'])
+    if not depenses_df.empty:
+        depenses_df['date'] = pd.to_datetime(depenses_df['date'])
+    
+    if periode_type == 'jour':
+        # param1 = date sélectionnée
+        if not revenus_df.empty:
+            revenus_df = revenus_df[revenus_df['date'].dt.date == param1]
+        if not depenses_df.empty:
+            depenses_df = depenses_df[depenses_df['date'].dt.date == param1]
+            
+    elif periode_type == 'semaine':
+        # param1 = date de début de semaine
+        debut_semaine = param1 - pd.Timedelta(days=param1.weekday())
+        fin_semaine = debut_semaine + pd.Timedelta(days=6)
+        
+        if not revenus_df.empty:
+            revenus_df = revenus_df[(revenus_df['date'].dt.date >= debut_semaine) & 
+                                   (revenus_df['date'].dt.date <= fin_semaine)]
+        if not depenses_df.empty:
+            depenses_df = depenses_df[(depenses_df['date'].dt.date >= debut_semaine) & 
+                                     (depenses_df['date'].dt.date <= fin_semaine)]
+            
+    elif periode_type == 'mois':
+        # param1 = mois, param2 = année
+        if not revenus_df.empty:
+            revenus_df = revenus_df[(revenus_df['date'].dt.month == param1) & 
+                                   (revenus_df['date'].dt.year == param2)]
+        if not depenses_df.empty:
+            depenses_df = depenses_df[(depenses_df['date'].dt.month == param1) & 
+                                     (depenses_df['date'].dt.year == param2)]
+            
+    elif periode_type == 'annee':
+        # param2 = année
+        if not revenus_df.empty:
+            revenus_df = revenus_df[revenus_df['date'].dt.year == param2]
+        if not depenses_df.empty:
+            depenses_df = depenses_df[depenses_df['date'].dt.year == param2]
+    
+    total_revenus = revenus_df['montant'].sum() if not revenus_df.empty else 0
+    total_depenses = depenses_df['montant'].sum() if not depenses_df.empty else 0
+    
+    return {
+        'revenus': total_revenus,
+        'depenses': total_depenses,
+        'solde': total_revenus - total_depenses,
+        'epargne': get_solde_epargne(),
+        'depenses_df': depenses_df
+    }
+
 def calculer_soldes(mois, annee):
     revenus_df = get_revenus_df(mois, annee)
     depenses_df = get_depenses_df(mois, annee)
@@ -444,37 +500,81 @@ def render_mobile_header():
         </div>
     """, unsafe_allow_html=True)
 
-def render_month_selector():
+def render_period_selector():
     st.markdown('<div style="padding: 0 1.5rem 1rem 1.5rem;">', unsafe_allow_html=True)
-    current_month = datetime.now().month
-    current_year = datetime.now().year
     
-    months_options = []
-    months_display = []
-    for i in range(-2, 3):
-        m = current_month + i
-        y = current_year
-        if m < 1:
-            m += 12
-            y -= 1
-        elif m > 12:
-            m -= 12
-            y += 1
-        months_options.append((m, y))
-        months_display.append(f"{calendar.month_name[m][:3]}. {y}")
+    col1, col2 = st.columns([1, 2])
     
-    col1, col2, col3 = st.columns([1, 3, 1])
-    with col2:
-        selected = st.selectbox(
+    with col1:
+        periode = st.selectbox(
             "Période",
-            range(len(months_options)),
+            ["Jour", "Semaine", "Mois", "Année"],
             index=2,
-            format_func=lambda x: months_display[x],
             label_visibility="collapsed"
         )
     
-    st.markdown('</div>', unsafe_allow_html=True)
-    return months_options[selected]
+    with col2:
+        if periode == "Jour":
+            date_selectionnee = st.date_input(
+                "Date",
+                value=date.today(),
+                min_value=date(2020, 1, 1),
+                max_value=date(2030, 12, 31),
+                format="DD/MM/YYYY",
+                label_visibility="collapsed"
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
+            return ('jour', date_selectionnee, None)
+            
+        elif periode == "Semaine":
+            date_selectionnee = st.date_input(
+                "Semaine de",
+                value=date.today(),
+                min_value=date(2020, 1, 1),
+                max_value=date(2030, 12, 31),
+                format="DD/MM/YYYY",
+                label_visibility="collapsed"
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
+            return ('semaine', date_selectionnee, None)
+            
+        elif periode == "Mois":
+            current_month = datetime.now().month
+            current_year = datetime.now().year
+            
+            months_options = []
+            months_display = []
+            for i in range(-6, 7):
+                m = current_month + i
+                y = current_year
+                if m < 1:
+                    m += 12
+                    y -= 1
+                elif m > 12:
+                    m -= 12
+                    y += 1
+                months_options.append((m, y))
+                months_display.append(f"{calendar.month_name[m]} {y}")
+            
+            selected = st.selectbox(
+                "Mois",
+                range(len(months_options)),
+                index=6,
+                format_func=lambda x: months_display[x],
+                label_visibility="collapsed"
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
+            return ('mois', months_options[selected][0], months_options[selected][1])
+            
+        else:  # Année
+            annee = st.selectbox(
+                "Année",
+                range(2020, 2031),
+                index=datetime.now().year - 2020,
+                label_visibility="collapsed"
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
+            return ('annee', None, annee)
 
 def render_stats_cards(soldes):
     st.markdown(f"""
@@ -572,14 +672,16 @@ def render_category_list(depenses_df, total_depenses):
 # ==================== PAGES ====================
 def page_dashboard():
     render_mobile_header()
-    mois, annee = render_month_selector()
     
-    soldes = calculer_soldes(mois, annee)
+    periode_type, param1, param2 = render_period_selector()
+    
+    soldes = calculer_soldes_periode(periode_type, param1, param2)
     
     st.markdown('<div class="content-container">', unsafe_allow_html=True)
+    
     render_stats_cards(soldes)
     
-    depenses_df = get_depenses_df(mois, annee)
+    depenses_df = soldes['depenses_df']
     
     if not depenses_df.empty:
         render_circular_chart(depenses_df, soldes['depenses'])
@@ -588,7 +690,7 @@ def page_dashboard():
         st.markdown("""
             <div style="text-align: center; padding: 4rem 2rem; color: #8a8a8a;">
                 <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
-                <div style="font-size: 1.1rem;">Aucune dépense ce mois-ci</div>
+                <div style="font-size: 1.1rem;">Aucune dépense pour cette période</div>
             </div>
         """, unsafe_allow_html=True)
     
@@ -618,17 +720,23 @@ def page_revenus():
                 montant = st.number_input("Montant (FCFA)", min_value=0.0, step=1000.0)
                 description = st.text_area("Description")
             
-            if st.form_submit_button("💾 Enregistrer"):
-                if montant > 0:
-                    st.session_state.revenus.append({
-                        'date': str(date_rev),
-                        'type_revenu': type_rev,
-                        'client': client,
-                        'montant': montant,
-                        'description': description
-                    })
-                    st.success("✅ Revenu enregistré!")
-                    st.rerun()
+            submitted = st.form_submit_button("💾 Enregistrer", use_container_width=True)
+            
+        if submitted:
+            if montant > 0:
+                st.session_state.revenus.append({
+                    'date': str(date_rev),
+                    'type_revenu': type_rev,
+                    'client': client,
+                    'montant': montant,
+                    'description': description
+                })
+                st.success("✅ Revenu enregistré avec succès !", icon="✅")
+                st.balloons()
+                st.rerun()
+            else:
+                st.error("❌ Le montant doit être supérieur à 0", icon="❌")
+        
         st.markdown('</div>', unsafe_allow_html=True)
     
     with tab2:
@@ -665,17 +773,23 @@ def page_depenses():
                 fournisseur = st.text_input("Fournisseur")
                 description = st.text_area("Description")
             
-            if st.form_submit_button("💾 Enregistrer"):
-                if montant > 0:
-                    st.session_state.depenses.append({
-                        'date': str(date_dep),
-                        'type_depense': type_dep,
-                        'montant': montant,
-                        'fournisseur': fournisseur,
-                        'description': description
-                    })
-                    st.success("✅ Dépense enregistrée!")
-                    st.rerun()
+            submitted = st.form_submit_button("💾 Enregistrer", use_container_width=True)
+            
+        if submitted:
+            if montant > 0:
+                st.session_state.depenses.append({
+                    'date': str(date_dep),
+                    'type_depense': type_dep,
+                    'montant': montant,
+                    'fournisseur': fournisseur,
+                    'description': description
+                })
+                st.success("✅ Dépense enregistrée avec succès !", icon="✅")
+                st.balloons()
+                st.rerun()
+            else:
+                st.error("❌ Le montant doit être supérieur à 0", icon="❌")
+        
         st.markdown('</div>', unsafe_allow_html=True)
     
     with tab2:
@@ -696,6 +810,11 @@ def page_epargne():
     
     with tab1:
         st.markdown('<div class="form-card">', unsafe_allow_html=True)
+        
+        # Afficher le solde actuel avant le formulaire
+        solde_actuel_display = get_solde_epargne()
+        st.info(f"💰 Solde actuel d'épargne : **{solde_actuel_display:,.0f} FCFA**")
+        
         with st.form("form_epargne"):
             col1, col2 = st.columns(2)
             with col1:
@@ -706,28 +825,42 @@ def page_epargne():
                     max_value=date(2030, 12, 31),
                     format="DD/MM/YYYY"
                 )
-                montant_depose = st.number_input("Montant déposé (FCFA)", min_value=0.0, step=1000.0)
+                montant_depose = st.number_input("Montant à déposer (FCFA)", min_value=0.0, step=1000.0)
             with col2:
-                objectif = st.text_input("Objectif")
-                solde_actuel = st.number_input("Solde actuel (FCFA)", min_value=0.0, step=1000.0)
+                objectif = st.text_input("Objectif (ex: Voyage, Maison...)")
             
-            if st.form_submit_button("💾 Enregistrer"):
-                if montant_depose > 0:
-                    st.session_state.epargne.append({
-                        'date': str(date_ep),
-                        'montant_depose': montant_depose,
-                        'objectif': objectif,
-                        'solde_actuel': solde_actuel
-                    })
-                    st.success("✅ Dépôt enregistré!")
-                    st.rerun()
+            submitted = st.form_submit_button("💾 Déposer", use_container_width=True)
+            
+        if submitted:
+            if montant_depose > 0:
+                # Calculer le nouveau solde
+                nouveau_solde = solde_actuel_display + montant_depose
+                
+                st.session_state.epargne.append({
+                    'date': str(date_ep),
+                    'montant_depose': montant_depose,
+                    'objectif': objectif,
+                    'solde_actuel': nouveau_solde
+                })
+                st.success(f"✅ Dépôt de {montant_depose:,.0f} FCFA enregistré ! Nouveau solde : {nouveau_solde:,.0f} FCFA", icon="✅")
+                st.balloons()
+                st.rerun()
+            else:
+                st.error("❌ Le montant doit être supérieur à 0", icon="❌")
+        
         st.markdown('</div>', unsafe_allow_html=True)
     
     with tab2:
         df = get_epargne_df()
         if not df.empty:
             solde = get_solde_epargne()
-            st.metric("💰 Solde actuel", f"{solde:,.0f} FCFA")
+            total_depose = df['montant_depose'].sum()
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("💰 Solde actuel", f"{solde:,.0f} FCFA")
+            with col2:
+                st.metric("📊 Total déposé", f"{total_depose:,.0f} FCFA")
             
             st.markdown("### 📈 Historique des dépôts")
             display_df = df[['date', 'montant_depose', 'objectif', 'solde_actuel']].copy()
@@ -741,7 +874,7 @@ def page_prets():
     render_mobile_header()
     st.title("💳 Suivi des Prêts")
     
-    tab1, tab2 = st.tabs(["➕ Nouveau Prêt", "📊 Prêts Actifs"])
+    tab1, tab2, tab3 = st.tabs(["➕ Nouveau Prêt", "💰 Rembourser", "📊 Prêts Actifs"])
     
     with tab1:
         st.markdown('<div class="form-card">', unsafe_allow_html=True)
@@ -766,22 +899,96 @@ def page_prets():
                     format="DD/MM/YYYY"
                 )
             
-            if st.form_submit_button("💾 Enregistrer"):
-                if nom_pret and montant_total > 0:
-                    st.session_state.prets.append({
-                        'nom_pret': nom_pret,
-                        'montant_total': montant_total,
-                        'montant_rembourse': 0,
-                        'echeance': str(echeance),
-                        'prochaine_echeance': str(prochaine),
-                        'solde_restant': montant_total,
-                        'statut': 'actif'
-                    })
-                    st.success("✅ Prêt enregistré!")
-                    st.rerun()
+            submitted = st.form_submit_button("💾 Enregistrer", use_container_width=True)
+            
+        if submitted:
+            if nom_pret and montant_total > 0:
+                st.session_state.prets.append({
+                    'nom_pret': nom_pret,
+                    'montant_total': montant_total,
+                    'montant_rembourse': 0,
+                    'echeance': str(echeance),
+                    'prochaine_echeance': str(prochaine),
+                    'solde_restant': montant_total,
+                    'statut': 'actif'
+                })
+                st.success(f"✅ Prêt '{nom_pret}' enregistré avec succès !", icon="✅")
+                st.balloons()
+                st.rerun()
+            else:
+                st.error("❌ Veuillez remplir tous les champs", icon="❌")
+        
         st.markdown('</div>', unsafe_allow_html=True)
     
     with tab2:
+        st.markdown('<div class="form-card">', unsafe_allow_html=True)
+        
+        prets_actifs = get_prets_df(statut='actif')
+        
+        if not prets_actifs.empty:
+            # Sélectionner le prêt à rembourser
+            pret_names = prets_actifs['nom_pret'].tolist()
+            pret_selectionne = st.selectbox("Sélectionner le prêt à rembourser", pret_names)
+            
+            # Trouver le prêt sélectionné
+            pret_idx = prets_actifs[prets_actifs['nom_pret'] == pret_selectionne].index[0]
+            pret = st.session_state.prets[pret_idx]
+            
+            # Afficher les infos du prêt
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Montant total", f"{pret['montant_total']:,.0f} FCFA")
+            with col2:
+                st.metric("Déjà remboursé", f"{pret['montant_rembourse']:,.0f} FCFA")
+            with col3:
+                st.metric("Restant", f"{pret['solde_restant']:,.0f} FCFA")
+            
+            # Formulaire de remboursement
+            with st.form("form_remboursement"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    date_remb = st.date_input(
+                        "Date de remboursement",
+                        value=date.today(),
+                        min_value=date(2020, 1, 1),
+                        max_value=date(2030, 12, 31),
+                        format="DD/MM/YYYY"
+                    )
+                with col2:
+                    montant_remb = st.number_input(
+                        f"Montant à rembourser (Max: {pret['solde_restant']:,.0f} FCFA)",
+                        min_value=0.0,
+                        max_value=float(pret['solde_restant']),
+                        step=1000.0
+                    )
+                
+                note = st.text_area("Note (optionnel)")
+                
+                submitted_remb = st.form_submit_button("💰 Rembourser", use_container_width=True)
+                
+            if submitted_remb:
+                if montant_remb > 0:
+                    # Mettre à jour le prêt
+                    st.session_state.prets[pret_idx]['montant_rembourse'] += montant_remb
+                    st.session_state.prets[pret_idx]['solde_restant'] -= montant_remb
+                    
+                    # Si complètement remboursé, changer le statut
+                    if st.session_state.prets[pret_idx]['solde_restant'] <= 0:
+                        st.session_state.prets[pret_idx]['statut'] = 'soldé'
+                        st.success(f"🎉 Prêt '{pret_selectionne}' entièrement remboursé !", icon="🎉")
+                        st.balloons()
+                    else:
+                        st.success(f"✅ Remboursement de {montant_remb:,.0f} FCFA enregistré !", icon="✅")
+                    
+                    st.rerun()
+                else:
+                    st.error("❌ Le montant doit être supérieur à 0", icon="❌")
+        else:
+            st.info("Aucun prêt actif à rembourser")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with tab3:
         prets = get_prets_df(statut='actif')
         if not prets.empty:
             st.markdown("### 📋 Liste des prêts actifs")
@@ -802,6 +1009,8 @@ def page_prets():
                     
                     st.markdown(f"**Échéance finale:** {pret['echeance']}")
                     st.markdown(f"**Prochaine échéance:** {pret['prochaine_echeance']}")
+        else:
+            st.info("Aucun prêt actif")
         else:
             st.info("Aucun prêt actif")
 
