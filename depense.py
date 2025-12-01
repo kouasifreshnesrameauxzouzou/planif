@@ -1011,8 +1011,6 @@ def page_prets():
                     st.markdown(f"**Prochaine échéance:** {pret['prochaine_echeance']}")
         else:
             st.info("Aucun prêt actif")
-        else:
-            st.info("Aucun prêt actif")
 
 # ==================== NAVIGATION ====================
 def render_nav_tabs():
