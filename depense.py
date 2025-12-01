@@ -583,12 +583,12 @@ def ajouter_revenu(user_id, date_rev, type_rev, client, montant, description):
 
 def get_revenus(user_id, mois=None, annee=None):
     conn = get_db_connection()
-    query = "SELECT * FROM revenus WHERE user_id = ?"
-    params = [user_id]
     if mois and annee:
-        query += " AND strftime('%m', date) = ? AND strftime('%Y', date) = ?"
-        params.extend([f"{mois:02d}", str(annee)])
-    query += " ORDER BY date DESC"
+        query = "SELECT * FROM revenus WHERE user_id = ? AND strftime('%m', date) = ? AND strftime('%Y', date) = ? ORDER BY date DESC"
+        params = (user_id, f"{mois:02d}", str(annee))
+    else:
+        query = "SELECT * FROM revenus WHERE user_id = ? ORDER BY date DESC"
+        params = (user_id,)
     df = pd.read_sql_query(query, conn, params=params)
     conn.close()
     return df
@@ -606,12 +606,12 @@ def ajouter_depense(user_id, date_dep, type_dep, montant, fournisseur, descripti
 
 def get_depenses(user_id, mois=None, annee=None):
     conn = get_db_connection()
-    query = "SELECT * FROM depenses WHERE user_id = ?"
-    params = [user_id]
     if mois and annee:
-        query += " AND strftime('%m', date) = ? AND strftime('%Y', date) = ?"
-        params.extend([f"{mois:02d}", str(annee)])
-    query += " ORDER BY date DESC"
+        query = "SELECT * FROM depenses WHERE user_id = ? AND strftime('%m', date) = ? AND strftime('%Y', date) = ? ORDER BY date DESC"
+        params = (user_id, f"{mois:02d}", str(annee))
+    else:
+        query = "SELECT * FROM depenses WHERE user_id = ? ORDER BY date DESC"
+        params = (user_id,)
     df = pd.read_sql_query(query, conn, params=params)
     conn.close()
     return df
@@ -629,7 +629,7 @@ def ajouter_epargne(user_id, date_ep, montant_depose, objectif, solde_actuel):
 
 def get_epargne(user_id):
     conn = get_db_connection()
-    df = pd.read_sql_query("SELECT * FROM epargne WHERE user_id = ? ORDER BY date DESC", conn, params=[user_id])
+    df = pd.read_sql_query("SELECT * FROM epargne WHERE user_id = ? ORDER BY date DESC", conn, params=(user_id,))
     conn.close()
     return df
 
@@ -650,12 +650,12 @@ def ajouter_pret(user_id, nom_pret, montant_total, echeance, prochaine_echeance)
 
 def get_prets(user_id, statut=None):
     conn = get_db_connection()
-    query = "SELECT * FROM prets WHERE user_id = ?"
-    params = [user_id]
     if statut:
-        query += " AND statut = ?"
-        params.append(statut)
-    query += " ORDER BY created_at DESC"
+        query = "SELECT * FROM prets WHERE user_id = ? AND statut = ? ORDER BY created_at DESC"
+        params = (user_id, statut)
+    else:
+        query = "SELECT * FROM prets WHERE user_id = ? ORDER BY created_at DESC"
+        params = (user_id,)
     df = pd.read_sql_query(query, conn, params=params)
     conn.close()
     return df
@@ -673,12 +673,12 @@ def ajouter_projet(user_id, nom, client, date_debut, date_fin, etat, budget, res
 
 def get_projets(user_id, etat=None):
     conn = get_db_connection()
-    query = "SELECT * FROM projets WHERE user_id = ?"
-    params = [user_id]
     if etat:
-        query += " AND etat = ?"
-        params.append(etat)
-    query += " ORDER BY date_debut DESC"
+        query = "SELECT * FROM projets WHERE user_id = ? AND etat = ? ORDER BY date_debut DESC"
+        params = (user_id, etat)
+    else:
+        query = "SELECT * FROM projets WHERE user_id = ? ORDER BY date_debut DESC"
+        params = (user_id,)
     df = pd.read_sql_query(query, conn, params=params)
     conn.close()
     return df
@@ -696,7 +696,7 @@ def ajouter_client(user_id, nom, contact, type_service, date_service, montant, c
 
 def get_clients(user_id):
     conn = get_db_connection()
-    df = pd.read_sql_query("SELECT * FROM clients WHERE user_id = ? ORDER BY date_service DESC", conn, params=[user_id])
+    df = pd.read_sql_query("SELECT * FROM clients WHERE user_id = ? ORDER BY date_service DESC", conn, params=(user_id,))
     conn.close()
     return df
 
