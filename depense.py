@@ -366,8 +366,8 @@ CATEGORIES_INFO = {
     "Marketing": {"icon": "📢", "color": "#ff9966"},
 }
 
-TYPES_REVENUS = ["Vente", "Service", "Consultation", "Abonnement", "Commission", "Autre"]
-TYPES_DEPENSES = list(CATEGORIES_INFO.keys()) + ["Loyer", "Équipement", "Maintenance", "Autre"]
+TYPES_REVENUS = ["Vente", "Service", "Consultation", "Abonnement", "Commission", "Salaire", "Encaissement de devis", "Maintenance", "Dons", "Autre"]
+TYPES_DEPENSES = list(CATEGORIES_INFO.keys()) + ["Loyer", "Équipement", "Maintenance", "Dîme", "Offrande", "Promesse", "Sortie entre amis", "Salaire des employés", "WiFi", "Crédit téléphonique", "Vêtement", "Engagement", "Autre"]
 ETATS_PROJET = ["En cours", "Terminé", "En attente", "Annulé"]
 
 # ==================== FONCTIONS ====================
@@ -395,6 +395,27 @@ def get_depenses_df(mois=None, annee=None):
     
     return df.sort_values('date', ascending=False)
 
+def get_epargne_df():
+    if not st.session_state.epargne:
+        return pd.DataFrame(columns=['date', 'montant_depose', 'objectif', 'solde_actuel'])
+    
+    df = pd.DataFrame(st.session_state.epargne)
+    df['date'] = pd.to_datetime(df['date'])
+    return df.sort_values('date', ascending=False)
+
+def get_solde_epargne():
+    df = get_epargne_df()
+    return df['solde_actuel'].iloc[0] if not df.empty else 0
+
+def get_prets_df(statut=None):
+    if not st.session_state.prets:
+        return pd.DataFrame(columns=['nom_pret', 'montant_total', 'montant_rembourse', 'echeance', 'prochaine_echeance', 'solde_restant', 'statut'])
+    
+    df = pd.DataFrame(st.session_state.prets)
+    if statut:
+        df = df[df['statut'] == statut]
+    return df
+
 def calculer_soldes(mois, annee):
     revenus_df = get_revenus_df(mois, annee)
     depenses_df = get_depenses_df(mois, annee)
@@ -405,7 +426,8 @@ def calculer_soldes(mois, annee):
     return {
         'revenus': total_revenus,
         'depenses': total_depenses,
-        'solde': total_revenus - total_depenses
+        'solde': total_revenus - total_depenses,
+        'epargne': get_solde_epargne()
     }
 
 # ==================== UI ====================
@@ -469,6 +491,10 @@ def render_stats_cards(soldes):
             <div class="stat-card">
                 <div class="stat-label">💵 Solde</div>
                 <div class="stat-value {'positive' if soldes['solde'] >= 0 else 'negative'}">{soldes['solde']:+,.0f} FCFA</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">💎 Épargne</div>
+                <div class="stat-value neutral">{soldes['epargne']:,.0f} FCFA</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -579,7 +605,13 @@ def page_revenus():
         with st.form("form_revenu"):
             col1, col2 = st.columns(2)
             with col1:
-                date_rev = st.date_input("Date", value=date.today())
+                date_rev = st.date_input(
+                    "Date",
+                    value=date.today(),
+                    min_value=date(2020, 1, 1),
+                    max_value=date(2030, 12, 31),
+                    format="DD/MM/YYYY"
+                )
                 type_rev = st.selectbox("Type", TYPES_REVENUS)
                 client = st.text_input("Client")
             with col2:
@@ -620,7 +652,13 @@ def page_depenses():
         with st.form("form_depense"):
             col1, col2 = st.columns(2)
             with col1:
-                date_dep = st.date_input("Date", value=date.today())
+                date_dep = st.date_input(
+                    "Date",
+                    value=date.today(),
+                    min_value=date(2020, 1, 1),
+                    max_value=date(2030, 12, 31),
+                    format="DD/MM/YYYY"
+                )
                 type_dep = st.selectbox("Type", TYPES_DEPENSES)
                 montant = st.number_input("Montant (FCFA)", min_value=0.0, step=100.0)
             with col2:
@@ -650,9 +688,126 @@ def page_depenses():
         else:
             st.info("Aucune dépense")
 
+def page_epargne():
+    render_mobile_header()
+    st.title("💎 Épargne")
+    
+    tab1, tab2 = st.tabs(["➕ Ajouter", "📊 Suivi"])
+    
+    with tab1:
+        st.markdown('<div class="form-card">', unsafe_allow_html=True)
+        with st.form("form_epargne"):
+            col1, col2 = st.columns(2)
+            with col1:
+                date_ep = st.date_input(
+                    "Date",
+                    value=date.today(),
+                    min_value=date(2020, 1, 1),
+                    max_value=date(2030, 12, 31),
+                    format="DD/MM/YYYY"
+                )
+                montant_depose = st.number_input("Montant déposé (FCFA)", min_value=0.0, step=1000.0)
+            with col2:
+                objectif = st.text_input("Objectif")
+                solde_actuel = st.number_input("Solde actuel (FCFA)", min_value=0.0, step=1000.0)
+            
+            if st.form_submit_button("💾 Enregistrer"):
+                if montant_depose > 0:
+                    st.session_state.epargne.append({
+                        'date': str(date_ep),
+                        'montant_depose': montant_depose,
+                        'objectif': objectif,
+                        'solde_actuel': solde_actuel
+                    })
+                    st.success("✅ Dépôt enregistré!")
+                    st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with tab2:
+        df = get_epargne_df()
+        if not df.empty:
+            solde = get_solde_epargne()
+            st.metric("💰 Solde actuel", f"{solde:,.0f} FCFA")
+            
+            st.markdown("### 📈 Historique des dépôts")
+            display_df = df[['date', 'montant_depose', 'objectif', 'solde_actuel']].copy()
+            display_df['date'] = display_df['date'].dt.strftime('%Y-%m-%d')
+            display_df.columns = ['Date', 'Montant déposé', 'Objectif', 'Solde']
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("Aucun dépôt d'épargne")
+
+def page_prets():
+    render_mobile_header()
+    st.title("💳 Suivi des Prêts")
+    
+    tab1, tab2 = st.tabs(["➕ Nouveau Prêt", "📊 Prêts Actifs"])
+    
+    with tab1:
+        st.markdown('<div class="form-card">', unsafe_allow_html=True)
+        with st.form("form_pret"):
+            nom_pret = st.text_input("Nom du prêt")
+            col1, col2 = st.columns(2)
+            with col1:
+                montant_total = st.number_input("Montant total (FCFA)", min_value=0.0, step=10000.0)
+                echeance = st.date_input(
+                    "Échéance finale",
+                    value=date.today(),
+                    min_value=date(2020, 1, 1),
+                    max_value=date(2030, 12, 31),
+                    format="DD/MM/YYYY"
+                )
+            with col2:
+                prochaine = st.date_input(
+                    "Prochaine échéance",
+                    value=date.today(),
+                    min_value=date(2020, 1, 1),
+                    max_value=date(2030, 12, 31),
+                    format="DD/MM/YYYY"
+                )
+            
+            if st.form_submit_button("💾 Enregistrer"):
+                if nom_pret and montant_total > 0:
+                    st.session_state.prets.append({
+                        'nom_pret': nom_pret,
+                        'montant_total': montant_total,
+                        'montant_rembourse': 0,
+                        'echeance': str(echeance),
+                        'prochaine_echeance': str(prochaine),
+                        'solde_restant': montant_total,
+                        'statut': 'actif'
+                    })
+                    st.success("✅ Prêt enregistré!")
+                    st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with tab2:
+        prets = get_prets_df(statut='actif')
+        if not prets.empty:
+            st.markdown("### 📋 Liste des prêts actifs")
+            
+            for idx, pret in prets.iterrows():
+                prog = (pret['montant_rembourse'] / pret['montant_total']) * 100 if pret['montant_total'] > 0 else 0
+                
+                with st.expander(f"💳 {pret['nom_pret']}", expanded=True):
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Montant total", f"{pret['montant_total']:,.0f} FCFA")
+                    with col2:
+                        st.metric("Remboursé", f"{pret['montant_rembourse']:,.0f} FCFA")
+                    with col3:
+                        st.metric("Restant", f"{pret['solde_restant']:,.0f} FCFA")
+                    
+                    st.progress(prog / 100, text=f"Progression: {prog:.1f}%")
+                    
+                    st.markdown(f"**Échéance finale:** {pret['echeance']}")
+                    st.markdown(f"**Prochaine échéance:** {pret['prochaine_echeance']}")
+        else:
+            st.info("Aucun prêt actif")
+
 # ==================== NAVIGATION ====================
 def render_nav_tabs():
-    tabs = st.tabs(["📊 Dashboard", "💰 Revenus", "💸 Dépenses"])
+    tabs = st.tabs(["📊 Dashboard", "💰 Revenus", "💸 Dépenses", "💎 Épargne", "💳 Prêts"])
     
     with tabs[0]:
         page_dashboard()
@@ -660,6 +815,10 @@ def render_nav_tabs():
         page_revenus()
     with tabs[2]:
         page_depenses()
+    with tabs[3]:
+        page_epargne()
+    with tabs[4]:
+        page_prets()
 
 # ==================== MAIN ====================
 def main():
