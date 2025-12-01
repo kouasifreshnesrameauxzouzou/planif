@@ -700,6 +700,11 @@ def page_revenus():
     render_mobile_header()
     st.title("💰 Revenus")
     
+    # Afficher le message de succès s'il existe
+    if 'message_success' in st.session_state and st.session_state.message_success:
+        st.success(st.session_state.message_success, icon="✅")
+        st.session_state.message_success = None
+    
     tab1, tab2 = st.tabs(["➕ Ajouter", "📋 Historique"])
     
     with tab1:
@@ -720,7 +725,7 @@ def page_revenus():
                 montant = st.number_input("Montant (FCFA)", min_value=0.0, step=1000.0)
                 description = st.text_area("Description")
             
-            submitted = st.form_submit_button("💾 Enregistrer", use_container_width=True)
+            submitted = st.form_submit_button("💾 Enregistrer et voir le Dashboard", use_container_width=True)
             
         if submitted:
             if montant > 0:
@@ -731,8 +736,14 @@ def page_revenus():
                     'montant': montant,
                     'description': description
                 })
-                st.success("✅ Revenu enregistré avec succès !", icon="✅")
+                # Message de succès
+                st.success(f"✅ Revenu de {montant:,.0f} FCFA enregistré avec succès !", icon="✅")
                 st.balloons()
+                # Attendre 2 secondes pour voir le message
+                import time
+                time.sleep(2)
+                # Rediriger vers dashboard
+                st.session_state.active_page = 'dashboard'
                 st.rerun()
             else:
                 st.error("❌ Le montant doit être supérieur à 0", icon="❌")
@@ -743,15 +754,46 @@ def page_revenus():
         df = get_revenus_df()
         if not df.empty:
             st.metric("💵 Total", f"{df['montant'].sum():,.0f} FCFA")
-            display_df = df[['date', 'type_revenu', 'client', 'montant']].copy()
-            display_df['date'] = display_df['date'].dt.strftime('%Y-%m-%d')
-            st.dataframe(display_df, use_container_width=True, hide_index=True)
+            
+            # Bouton de suppression pour chaque ligne
+            st.markdown("### 🗑️ Gérer les revenus")
+            for idx, row in df.iterrows():
+                col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 1])
+                with col1:
+                    st.write(f"📅 {row['date'].strftime('%d/%m/%Y')}")
+                with col2:
+                    st.write(f"**{row['type_revenu']}**")
+                with col3:
+                    st.write(f"👤 {row['client']}")
+                with col4:
+                    st.write(f"💰 {row['montant']:,.0f} FCFA")
+                with col5:
+                    # Trouver l'index dans la liste originale
+                    original_idx = None
+                    for i, rev in enumerate(st.session_state.revenus):
+                        if (rev['date'] == str(row['date'].date()) and 
+                            rev['montant'] == row['montant'] and 
+                            rev['type_revenu'] == row['type_revenu']):
+                            original_idx = i
+                            break
+                    
+                    if original_idx is not None:
+                        if st.button("🗑️", key=f"del_rev_{original_idx}"):
+                            st.session_state.revenus.pop(original_idx)
+                            st.success("✅ Revenu supprimé !")
+                            time.sleep(1)
+                            st.rerun()
         else:
             st.info("Aucun revenu")
 
 def page_depenses():
     render_mobile_header()
     st.title("💸 Dépenses")
+    
+    # Afficher le message de succès s'il existe
+    if 'message_success' in st.session_state and st.session_state.message_success:
+        st.success(st.session_state.message_success, icon="✅")
+        st.session_state.message_success = None
     
     tab1, tab2 = st.tabs(["➕ Ajouter", "📋 Historique"])
     
@@ -773,7 +815,7 @@ def page_depenses():
                 fournisseur = st.text_input("Fournisseur")
                 description = st.text_area("Description")
             
-            submitted = st.form_submit_button("💾 Enregistrer", use_container_width=True)
+            submitted = st.form_submit_button("💾 Enregistrer et voir le Dashboard", use_container_width=True)
             
         if submitted:
             if montant > 0:
@@ -784,8 +826,14 @@ def page_depenses():
                     'fournisseur': fournisseur,
                     'description': description
                 })
-                st.success("✅ Dépense enregistrée avec succès !", icon="✅")
+                # Message de succès
+                st.success(f"✅ Dépense de {montant:,.0f} FCFA enregistrée avec succès !", icon="✅")
                 st.balloons()
+                # Attendre 2 secondes
+                import time
+                time.sleep(2)
+                # Rediriger vers dashboard
+                st.session_state.active_page = 'dashboard'
                 st.rerun()
             else:
                 st.error("❌ Le montant doit être supérieur à 0", icon="❌")
@@ -796,9 +844,36 @@ def page_depenses():
         df = get_depenses_df()
         if not df.empty:
             st.metric("💸 Total", f"{df['montant'].sum():,.0f} FCFA")
-            display_df = df[['date', 'type_depense', 'fournisseur', 'montant']].copy()
-            display_df['date'] = display_df['date'].dt.strftime('%Y-%m-%d')
-            st.dataframe(display_df, use_container_width=True, hide_index=True)
+            
+            # Bouton de suppression pour chaque ligne
+            st.markdown("### 🗑️ Gérer les dépenses")
+            for idx, row in df.iterrows():
+                col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 1])
+                with col1:
+                    st.write(f"📅 {row['date'].strftime('%d/%m/%Y')}")
+                with col2:
+                    st.write(f"**{row['type_depense']}**")
+                with col3:
+                    st.write(f"🏪 {row['fournisseur']}")
+                with col4:
+                    st.write(f"💸 {row['montant']:,.0f} FCFA")
+                with col5:
+                    # Trouver l'index dans la liste originale
+                    original_idx = None
+                    for i, dep in enumerate(st.session_state.depenses):
+                        if (dep['date'] == str(row['date'].date()) and 
+                            dep['montant'] == row['montant'] and 
+                            dep['type_depense'] == row['type_depense']):
+                            original_idx = i
+                            break
+                    
+                    if original_idx is not None:
+                        if st.button("🗑️", key=f"del_dep_{original_idx}"):
+                            st.session_state.depenses.pop(original_idx)
+                            st.success("✅ Dépense supprimée !")
+                            import time
+                            time.sleep(1)
+                            st.rerun()
         else:
             st.info("Aucune dépense")
 
@@ -829,7 +904,7 @@ def page_epargne():
             with col2:
                 objectif = st.text_input("Objectif (ex: Voyage, Maison...)")
             
-            submitted = st.form_submit_button("💾 Déposer", use_container_width=True)
+            submitted = st.form_submit_button("💾 Déposer et voir le Dashboard", use_container_width=True)
             
         if submitted:
             if montant_depose > 0:
@@ -844,6 +919,9 @@ def page_epargne():
                 })
                 st.success(f"✅ Dépôt de {montant_depose:,.0f} FCFA enregistré ! Nouveau solde : {nouveau_solde:,.0f} FCFA", icon="✅")
                 st.balloons()
+                import time
+                time.sleep(2)
+                st.session_state.active_page = 'dashboard'
                 st.rerun()
             else:
                 st.error("❌ Le montant doit être supérieur à 0", icon="❌")
@@ -863,10 +941,32 @@ def page_epargne():
                 st.metric("📊 Total déposé", f"{total_depose:,.0f} FCFA")
             
             st.markdown("### 📈 Historique des dépôts")
-            display_df = df[['date', 'montant_depose', 'objectif', 'solde_actuel']].copy()
-            display_df['date'] = display_df['date'].dt.strftime('%Y-%m-%d')
-            display_df.columns = ['Date', 'Montant déposé', 'Objectif', 'Solde']
-            st.dataframe(display_df, use_container_width=True, hide_index=True)
+            for idx, row in df.iterrows():
+                col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 1])
+                with col1:
+                    st.write(f"📅 {row['date'].strftime('%d/%m/%Y')}")
+                with col2:
+                    st.write(f"💰 {row['montant_depose']:,.0f} FCFA")
+                with col3:
+                    st.write(f"🎯 {row['objectif']}")
+                with col4:
+                    st.write(f"💎 Solde: {row['solde_actuel']:,.0f} FCFA")
+                with col5:
+                    # Trouver l'index dans la liste originale
+                    original_idx = None
+                    for i, ep in enumerate(st.session_state.epargne):
+                        if (ep['date'] == str(row['date'].date()) and 
+                            ep['montant_depose'] == row['montant_depose']):
+                            original_idx = i
+                            break
+                    
+                    if original_idx is not None:
+                        if st.button("🗑️", key=f"del_ep_{original_idx}"):
+                            st.session_state.epargne.pop(original_idx)
+                            st.success("✅ Dépôt supprimé !")
+                            import time
+                            time.sleep(1)
+                            st.rerun()
         else:
             st.info("Aucun dépôt d'épargne")
 
@@ -899,7 +999,7 @@ def page_prets():
                     format="DD/MM/YYYY"
                 )
             
-            submitted = st.form_submit_button("💾 Enregistrer", use_container_width=True)
+            submitted = st.form_submit_button("💾 Enregistrer et voir le Dashboard", use_container_width=True)
             
         if submitted:
             if nom_pret and montant_total > 0:
@@ -912,8 +1012,11 @@ def page_prets():
                     'solde_restant': montant_total,
                     'statut': 'actif'
                 })
-                st.success(f"✅ Prêt '{nom_pret}' enregistré avec succès !", icon="✅")
+                st.success(f"✅ Prêt '{nom_pret}' de {montant_total:,.0f} FCFA enregistré avec succès !", icon="✅")
                 st.balloons()
+                import time
+                time.sleep(2)
+                st.session_state.active_page = 'dashboard'
                 st.rerun()
             else:
                 st.error("❌ Veuillez remplir tous les champs", icon="❌")
@@ -964,7 +1067,7 @@ def page_prets():
                 
                 note = st.text_area("Note (optionnel)")
                 
-                submitted_remb = st.form_submit_button("💰 Rembourser", use_container_width=True)
+                submitted_remb = st.form_submit_button("💰 Rembourser et voir le Dashboard", use_container_width=True)
                 
             if submitted_remb:
                 if montant_remb > 0:
@@ -980,6 +1083,9 @@ def page_prets():
                     else:
                         st.success(f"✅ Remboursement de {montant_remb:,.0f} FCFA enregistré !", icon="✅")
                     
+                    import time
+                    time.sleep(2)
+                    st.session_state.active_page = 'dashboard'
                     st.rerun()
                 else:
                     st.error("❌ Le montant doit être supérieur à 0", icon="❌")
