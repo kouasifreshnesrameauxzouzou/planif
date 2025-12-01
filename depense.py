@@ -338,19 +338,105 @@ def load_mobile_dark_css():
     """, unsafe_allow_html=True)
 
 # ==================== INITIALISATION ====================
-def init_session_data():
-    if 'revenus' not in st.session_state:
+def save_data():
+    """Sauvegarder toutes les données dans des fichiers JSON"""
+    import json
+    import os
+    
+    # Créer le dossier data s'il n'existe pas
+    if not os.path.exists('data'):
+        os.makedirs('data')
+    
+    # Sauvegarder chaque type de données
+    with open('data/revenus.json', 'w', encoding='utf-8') as f:
+        json.dump(st.session_state.revenus, f, ensure_ascii=False, indent=2)
+    
+    with open('data/depenses.json', 'w', encoding='utf-8') as f:
+        json.dump(st.session_state.depenses, f, ensure_ascii=False, indent=2)
+    
+    with open('data/epargne.json', 'w', encoding='utf-8') as f:
+        json.dump(st.session_state.epargne, f, ensure_ascii=False, indent=2)
+    
+    with open('data/prets.json', 'w', encoding='utf-8') as f:
+        json.dump(st.session_state.prets, f, ensure_ascii=False, indent=2)
+    
+    with open('data/projets.json', 'w', encoding='utf-8') as f:
+        json.dump(st.session_state.projets, f, ensure_ascii=False, indent=2)
+    
+    with open('data/clients.json', 'w', encoding='utf-8') as f:
+        json.dump(st.session_state.clients, f, ensure_ascii=False, indent=2)
+
+def load_data():
+    """Charger toutes les données depuis les fichiers JSON"""
+    import json
+    import os
+    
+    # Charger les revenus
+    if os.path.exists('data/revenus.json'):
+        try:
+            with open('data/revenus.json', 'r', encoding='utf-8') as f:
+                st.session_state.revenus = json.load(f)
+        except:
+            st.session_state.revenus = []
+    else:
         st.session_state.revenus = []
-    if 'depenses' not in st.session_state:
+    
+    # Charger les dépenses
+    if os.path.exists('data/depenses.json'):
+        try:
+            with open('data/depenses.json', 'r', encoding='utf-8') as f:
+                st.session_state.depenses = json.load(f)
+        except:
+            st.session_state.depenses = []
+    else:
         st.session_state.depenses = []
-    if 'epargne' not in st.session_state:
+    
+    # Charger l'épargne
+    if os.path.exists('data/epargne.json'):
+        try:
+            with open('data/epargne.json', 'r', encoding='utf-8') as f:
+                st.session_state.epargne = json.load(f)
+        except:
+            st.session_state.epargne = []
+    else:
         st.session_state.epargne = []
-    if 'prets' not in st.session_state:
+    
+    # Charger les prêts
+    if os.path.exists('data/prets.json'):
+        try:
+            with open('data/prets.json', 'r', encoding='utf-8') as f:
+                st.session_state.prets = json.load(f)
+        except:
+            st.session_state.prets = []
+    else:
         st.session_state.prets = []
-    if 'projets' not in st.session_state:
+    
+    # Charger les projets
+    if os.path.exists('data/projets.json'):
+        try:
+            with open('data/projets.json', 'r', encoding='utf-8') as f:
+                st.session_state.projets = json.load(f)
+        except:
+            st.session_state.projets = []
+    else:
         st.session_state.projets = []
-    if 'clients' not in st.session_state:
+    
+    # Charger les clients
+    if os.path.exists('data/clients.json'):
+        try:
+            with open('data/clients.json', 'r', encoding='utf-8') as f:
+                st.session_state.clients = json.load(f)
+        except:
+            st.session_state.clients = []
+    else:
         st.session_state.clients = []
+
+def init_session_data():
+    """Initialiser les données en session"""
+    if 'data_loaded' not in st.session_state:
+        # Charger les données depuis les fichiers
+        load_data()
+        st.session_state.data_loaded = True
 
 # ==================== CATÉGORIES ====================
 CATEGORIES_INFO = {
@@ -736,6 +822,8 @@ def page_revenus():
                     'montant': montant,
                     'description': description
                 })
+                # Sauvegarder les données
+                save_data()
                 # Message de succès
                 st.success(f"✅ Revenu de {montant:,.0f} FCFA enregistré avec succès !", icon="✅")
                 st.balloons()
@@ -780,6 +868,7 @@ def page_revenus():
                     if original_idx is not None:
                         if st.button("🗑️", key=f"del_rev_{original_idx}"):
                             st.session_state.revenus.pop(original_idx)
+                            save_data()
                             st.success("✅ Revenu supprimé !")
                             time.sleep(1)
                             st.rerun()
@@ -826,6 +915,7 @@ def page_depenses():
                     'fournisseur': fournisseur,
                     'description': description
                 })
+                save_data()
                 # Message de succès
                 st.success(f"✅ Dépense de {montant:,.0f} FCFA enregistrée avec succès !", icon="✅")
                 st.balloons()
@@ -870,6 +960,7 @@ def page_depenses():
                     if original_idx is not None:
                         if st.button("🗑️", key=f"del_dep_{original_idx}"):
                             st.session_state.depenses.pop(original_idx)
+                            save_data()
                             st.success("✅ Dépense supprimée !")
                             import time
                             time.sleep(1)
@@ -917,6 +1008,7 @@ def page_epargne():
                     'objectif': objectif,
                     'solde_actuel': nouveau_solde
                 })
+                save_data()
                 st.success(f"✅ Dépôt de {montant_depose:,.0f} FCFA enregistré ! Nouveau solde : {nouveau_solde:,.0f} FCFA", icon="✅")
                 st.balloons()
                 import time
@@ -963,6 +1055,7 @@ def page_epargne():
                     if original_idx is not None:
                         if st.button("🗑️", key=f"del_ep_{original_idx}"):
                             st.session_state.epargne.pop(original_idx)
+                            save_data()
                             st.success("✅ Dépôt supprimé !")
                             import time
                             time.sleep(1)
@@ -1012,6 +1105,7 @@ def page_prets():
                     'solde_restant': montant_total,
                     'statut': 'actif'
                 })
+                save_data()
                 st.success(f"✅ Prêt '{nom_pret}' de {montant_total:,.0f} FCFA enregistré avec succès !", icon="✅")
                 st.balloons()
                 import time
@@ -1078,9 +1172,11 @@ def page_prets():
                     # Si complètement remboursé, changer le statut
                     if st.session_state.prets[pret_idx]['solde_restant'] <= 0:
                         st.session_state.prets[pret_idx]['statut'] = 'soldé'
+                        save_data()
                         st.success(f"🎉 Prêt '{pret_selectionne}' entièrement remboursé !", icon="🎉")
                         st.balloons()
                     else:
+                        save_data()
                         st.success(f"✅ Remboursement de {montant_remb:,.0f} FCFA enregistré !", icon="✅")
                     
                     import time
